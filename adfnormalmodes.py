@@ -36,7 +36,7 @@ class adfnormalmodes(object):
     self.coord = np.zeros((self.num, 3))
     self.atomnote = []
     for i in range(len(f1)):
-      if ' G E O M E T R Y  ***  3D  Molecule  ***' in f1[i]:
+      if ' G E O M E T R Y' in f1[i] and '***' in f1[i]:
         for j in range(self.num):
           self.coord[j][0] = float(f1[i+8+j].strip('\n').split()[2])
           self.coord[j][1] = float(f1[i+8+j].strip('\n').split()[3])
