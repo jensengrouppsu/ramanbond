@@ -169,7 +169,7 @@ class ramanbond_periodic2d:
       self.superramanbond.update({(key[0]+4*self.num, key[1] + (supercellhash[ii])*self.num )  : self.ramanbond[key]})
 
     printcoord('geo_periodic2d.xyz', self.superatomnote, self.supercoord)
-    dumpdate('ramanbond_periodic2d.p', self.superatomnote, self.supercoord, self.superramanatom, self.superramanbond)
+    dumpdata('ramanbond_periodic2d.p', self.superatomnote, self.supercoord, self.superramanatom, self.superramanbond)
 
 
 

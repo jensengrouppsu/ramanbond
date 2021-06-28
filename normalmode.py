@@ -9,9 +9,9 @@ A2B = 1.8897261328856432 ## constant converting angstrom to bohr
 def mode_to_pymol(obj, mode, vectorwidth=0.1, scalevector=1.0, component='all', transparency=1.0, unitconvert=1.0):
 
   # Open filename for this mode
-  fw = open('mode{0: .3f}.pymol'.format(mode), 'w')
+  fw = open('mode{0:.3f}.pymol'.format(mode), 'w')
   for i in range(len(obj.freq)):
-    if abs(obj.freq - mode) < 0.01:
+    if abs(obj.freq[i] - mode) < 0.01:
       pymolmode = obj.normalmode[i] / ( A2B * norm(obj.normalmode[i] ))
 
   # Cycle over each atom

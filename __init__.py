@@ -340,3 +340,44 @@ def periodiccoordfromtxt(filename):
   return atomnote, coord, vec
 
 
+def parameter_to_latticevec(aa, bb, cc, alpha, beta, gamma):
+  ## generate the lattice vectors given the crystal parameters, distance in A and angle in degree
+  alpha = alpha * pi / 180.0
+  beta = beta * pi / 180.0
+  gamma = gamma * pi / 180.0
+
+  origin = np.array([0, 0, 0])
+  vec1 = np.array([cc, 0, 0])
+  vec2 = np.array([bb*math.cos(alpha), bb*math.sin(alpha), 0 ])
+  vec3 = np.array([aa*math.cos(beta), 
+                        aa*(math.cos(gamma)-math.cos(beta)*math.cos(alpha)) / math.sin(alpha), 
+                        aa*math.sqrt(1-math.cos(beta)**2 - ( (math.cos(gamma)-math.cos(beta) * math.cos(alpha)) / math.sin(alpha) )**2)])
+
+## calc the volume of the unitcell given the lattice parameters ##
+#    V = aa*bb*cc*math.sqrt(1+2*math.cos(alpha)*math.cos(beta)*math.cos(gamma)-math.cos(alpha)**2 - math.cos(beta)**2 - math.cos(gamma)**2)
+#    S = bb*cc*math.sin(alpha)
+#    h = self.V / self.S
+  return vec1, vec2, vec3
+
+
+## define lattice parameters ##
+### Ag ##
+#aa = 2.942 ## in A
+#bb = 2.942 
+#cc = 2.942
+#alpha = 60 ## in degree
+#beta = 60
+#gamma = 60
+#########
+
+### Cu ##
+#aa = 2.561 ## in A
+#bb = 2.561 
+#cc = 2.561
+#alpha = 60 ## in degree
+#beta = 60
+#gamma = 60
+#elem = 'Cu'
+#########
+
+
