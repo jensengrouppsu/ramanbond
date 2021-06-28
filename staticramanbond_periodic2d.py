@@ -16,7 +16,7 @@ class polbond_periodic2d:
     self.coord = p.coord
     self.atomnote = p.atomnote
 
-    self.anglecos = calc_anglecos(self.coord)[2]
+    self.anglecos = calc_cosmatrix(self.coord)[2]
 
     self.polatom = {}
     for i in range(p.num):
@@ -87,10 +87,10 @@ class collect_bandspt_periodic2d:
 
   
       if 'Hirshfeld atomic dipole z' in f1[i]:
-        if closeshell == 1:
+        if closeshell == True:
           for ii in range(self.num):
             self.atomdip[ii][0] = (float(f1[i+1+ii].strip('\n').split()[-1]))
-        elif closeshell == 0:
+        elif closeshell == False:
           for ii in range(self.num):
             self.atomdip[ii][0] = (float(f1[i+1+ii].strip('\n').split()[-2])) + (float(f1[i+1+ii].strip('\n').split()[-1]))
         else:

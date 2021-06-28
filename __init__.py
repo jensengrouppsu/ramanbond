@@ -1,5 +1,5 @@
 import numpy as np
-from math import sqrt
+import math
 from math import pi
 from decimal import *
 from numpy.linalg import norm
@@ -62,7 +62,7 @@ def calc_3compo(atom, bond, atomnote, mollist, clulist):
 
 
 def calc_dis(coord1, coord2):
-  return sqrt((coord1[0]-coord2[0])**2.0 +  (coord1[1]-coord2[1])**2.0 + (coord1[2]-coord2[2])**2.0 )
+  return math.sqrt((coord1[0]-coord2[0])**2.0 +  (coord1[1]-coord2[1])**2.0 + (coord1[2]-coord2[2])**2.0 )
 
 
 def calc_dismatrix(coord):
@@ -196,9 +196,9 @@ def collectaoresponse(filename):
 
 def orient_ave(R):
   alpha = (1.0 / 3.0) * (R[0][0] + R[1][1] + R[2][2])
-  gamma = sqrt( 0.5 * (polar(R[0][0]-R[1][1])[0]**2 + polar(R[1][1]-R[2][2])[0]**2.0 + polar(R[2][2]-R[0][0])[0]**2 ) + 3*(polar(R[0][1])[0]**2 + polar(R[0][2])[0]**2 + polar(R[1][2])[0]**2 ) )
+  gamma = math.sqrt( 0.5 * (polar(R[0][0]-R[1][1])[0]**2 + polar(R[1][1]-R[2][2])[0]**2.0 + polar(R[2][2]-R[0][0])[0]**2 ) + 3*(polar(R[0][1])[0]**2 + polar(R[0][2])[0]**2 + polar(R[1][2])[0]**2 ) )
 
-  return sqrt((45*polar(alpha)[0]**2 + 7*gamma**2) / 45.0)
+  return math.sqrt((45*polar(alpha)[0]**2 + 7*gamma**2) / 45.0)
 
 
 def lorentzian(x, peakposition, scalefactor, fwhm):
@@ -285,14 +285,14 @@ def align_line(coord, v1, v2, direction):
 
 
 
-def coordfromxyz(self, filename):
+def coordfromxyz(filename):
   f = open(filename)
   f1 = f.readlines()
   f.close()
   num = int(f1[0].strip('\n'))
-  coord = np.zeros((self.num, 3))
+  coord = np.zeros((num, 3))
   atomnote = []
-  for i in range(self.num):
+  for i in range(num):
     atomnote.append(f1[i+2].strip('\n').split()[0])
     coord[i][0] = float(f1[i+2].strip('\n').split()[1])
     coord[i][1] = float(f1[i+2].strip('\n').split()[2])
@@ -321,7 +321,7 @@ def calc_dis_periodic2d(coord1, coord2, vec1, vec2):
   return minL, minii
 
 
-def periodiccoordfromtxt(self, filename):
+def periodiccoordfromtxt(filename):
   f = open(filename)
   f1 = f.readlines()
   f.close()
@@ -335,8 +335,8 @@ def periodiccoordfromtxt(self, filename):
       atomnote.append(f1[i].strip('\n').split()[0])
       coord.append(list(map(float, f1[i].strip('\n').split()[1:])))
 
-  coord = np.array(self.coord)
-  vec = np.array(self.vec)
+  coord = np.array(coord)
+  vec = np.array(vec)
   return atomnote, coord, vec
 
 
