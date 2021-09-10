@@ -171,103 +171,49 @@ class normalmode(object):
     f1 = f.readlines()
     f.close()
 
-    ## collect atomic masses ##
-    mass = [] ## a list for atomic masses
-    for i in range(len(f1)):
-      if 'Atomic Masses' in f1[i]:
-        ii = 2
-        while True:
-          if f1[i+ii] == '\n':
-            break
-          else:
-            mass.append(float(f1[i+ii].strip('\n').split()[-1]))
-            ii = ii + 1
-      else:
-        pass
-    mass = np.array(mass)
-    self.num = len(mass)
-    self.rt_mass = np.sqrt(mass)
-    self.rt_mass = np.diag(self.rt_mass)
 
     ## collect coordiantes ##
-    self.coord = np.zeros((self.num, 3))
+    self.coord = []
     self.atomnote = []
+    self.mass = []
+    self.freq = []
     for i in range(len(f1)):
       if ' G E O M E T R Y' in f1[i] and '***' in f1[i]:
-        for j in range(self.num):
-          self.coord[j][0] = float(f1[i+8+j].strip('\n').split()[2])
-          self.coord[j][1] = float(f1[i+8+j].strip('\n').split()[3])
-          self.coord[j][2] = float(f1[i+8+j].strip('\n').split()[4])
-          self.atomnote.append(f1[i+8+j].strip('\n').split()[1])
+        ii = 8
+        while True:
+          if len(f1[i+ii]) < 7:
+            break
+          else:
+            self.coord.append(list(map(float, f1[i+ii].strip('\n').split()[2:5])))
+            self.atomnote.append(f1[i+ii].strip('\n').split()[1])
+            self.mass.append(float(f1[i+ii].strip('\n').split()[-1]))
+            ii += 1
+      if 'Index   Frequency (cm-1)' in f1[i]:
+        ii = 1
+        while True:
+          if len(f1[i+ii]) < 2:
+            break
+          self.freq.append(float(f1[i+ii].strip('\n').split()[1]))
+          ii += 1
 
-#    for i in range(len(f1)):
-#      if 'FRAGMENTS' in f1[i]:
-#    	  for j in range(self.num):
-#    		  self.coord[j][0] = float(f1[i+3+j].strip('\n').split()[4])
-#    		  self.coord[j][1] = float(f1[i+3+j].strip('\n').split()[5])
-#    		  self.coord[j][2] = float(f1[i+3+j].strip('\n').split()[6])
-#    		  self.atomnote.append(f1[i+3+j].strip('\n').split()[1])
-#      else:
-#        pass
-#
-    ## collect frequencies and  cartesian coordinate changes (not mass-weighted) ##
-    self.freq = [] ## a list for frequencies
-    for i in range(len(f1)):
-      if 'Vibrations and Normal Modes' in f1[i]:
-        ii = 7
-        while True:
-          if f1[ii+i] == '\n':
-            break
-          else:
-            for iii in range(len(f1[i+ii].strip('\n').split())):
-              self.freq.append(float(f1[i+ii].strip('\n').split()[iii]))
-            ii = ii + 1 + self.num + 3
-      else:
-        pass
     self.freq = np.array(self.freq)
-    self.num_freq = len(self.freq) ## the number of frequencies or normal modes
-    self.normalmode = np.zeros((self.num_freq, self.num, 3))
+    self.coord = np.array(self.coord)
+    self.mass = np.array(self.mass)
+    self.rt_mass = np.sqrt(self.mass)
+    self.rt_mass = np.diag(self.rt_mass)
+
+    self.num = self.coord.shape[0]
+    self.num_freq = len(self.freq)
+
+    self.normalmode = np.zeros((len(self.freq), self.num, 3))
+    ii = 0
     for i in range(len(f1)):
-      if 'Vibrations and Normal Modes' in f1[i]:
-        ii = 9
-        j = 0
-        while True:
-          if 'List of All Frequencies' in f1[i+ii]:
-            break
-          else:
-            if (len(f1[i+ii].strip('\n').split()) - 1) == 9:
-              for jj in range(3):
-                for iii in range(self.num):
-                  self.normalmode[j+jj][iii][0] = float(f1[i+ii+iii].strip('\n').split()[3*jj+1])
-                for iii in range(self.num):
-                  self.normalmode[j+jj][iii][1] = float(f1[i+ii+iii].strip('\n').split()[3*jj+2])
-                for iii in range(self.num):
-                  self.normalmode[j+jj][iii][2] = float(f1[i+ii+iii].strip('\n').split()[3*jj+3])
-              j = j + 3
-            elif (len(f1[i+ii].strip('\n').split()) - 1) == 6:
-              for jj in range(2):
-                for iii in range(self.num):
-                  self.normalmode[j+jj][iii][0] = float(f1[i+ii+iii].strip('\n').split()[3*jj+1])
-                for iii in range(self.num):
-                  self.normalmode[j+jj][iii][1] = float(f1[i+ii+iii].strip('\n').split()[3*jj+2])
-                for iii in range(self.num):
-                  self.normalmode[j+jj][iii][2] = float(f1[i+ii+iii].strip('\n').split()[3*jj+3])
-              j = j + 2
-  
-            elif (len(f1[i+ii].strip('\n').split()) - 1) == 3:
-              for jj in range(1):
-                for iii in range(self.num):
-                  self.normalmode[j+jj][iii][0] = float(f1[i+ii+iii].strip('\n').split()[3*jj+1])
-                for iii in range(self.num):
-                  self.normalmode[j+jj][iii][1] = float(f1[i+ii+iii].strip('\n').split()[3*jj+2])
-                for iii in range(self.num):
-                  self.normalmode[j+jj][iii][2] = float(f1[i+ii+iii].strip('\n').split()[3*jj+3])
-              j = j + 1
-            else:
-              print('err about locating normal modes block')
-          ii = ii + self.num + 4
-      else:
-        pass
+      if 'Displacements (x/y/z)' in f1[i]: ## not mass weighted, in Bohr
+        for j in range(self.num):
+          self.normalmode[ii][j][0] = float(f1[i+1+j].strip('\n').split()[-3])
+          self.normalmode[ii][j][1] = float(f1[i+1+j].strip('\n').split()[-2])
+          self.normalmode[ii][j][2] = float(f1[i+1+j].strip('\n').split()[-1])
+        ii += 1
 
     self.mw_normalmode = np.zeros((self.num_freq, self.num, 3)) ##  mass-weighted normal modes
     for i in range(self.num_freq):
@@ -304,9 +250,9 @@ class normalmode_periodic():
     self.freq = []
     for i in range(1, len(f1)-1):
       if 'Geometry' in f1[i] and '---' in f1[i-1] and '---' in f1[i+1]:
-        ii = 4
+        ii = 5
         while True:
-          self.coord.append(list(map(float, f1[i+ii].strip('\n').split()[2:])))
+          self.coord.append(list(map(float, f1[i+ii].strip('\n').split()[2:5])))
           self.atomnote.append(f1[i+ii].strip('\n').split()[1])
           ii += 1
           if len(f1[i+ii]) < 3:
