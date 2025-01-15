@@ -16,6 +16,38 @@ for key in rbs:
   rbs[key] = rbs[key] * A2B
 ## scale the covalent atomic radii from angstrom to bohr
 
+def calc_proj(comp1, comp2):
+  vec1 = np.array([comp1.real, comp1.imag])
+  vec2 = np.array([comp2.real, comp2.imag])
+  return np.dot(vec1, vec2) / np.linalg.norm(vec2)
+
+
+def calc_qinter(atomnote, mollist, clulist, charge):
+  qinter = 0.0
+  for i in range(len(atomnote)):
+    if atomnote[i] in mollist:
+      qinter += charge[i]
+
+  return qinter
+
+
+
+def read_gs_hirshfeld_charge(filename):
+  f = open(filename)
+  f1 = f.readlines()
+  f.close()
+  gs_charge = []
+  for i in range(len(f1)):
+    if 'H I R S H F E L D ' in f1[i]:
+      ii = 0
+      while True:
+        if len(f1[i+11+ii]) < 3:
+          break
+        else:
+          gs_charge.append(float(f1[i+11+ii].strip('\n').split()[-1]))
+          ii += 1
+  return np.array(gs_charge)
+
 
 def twopoint_numdif(pp, mm, step):
   diff = {}
@@ -34,30 +66,28 @@ def twopoint_numdif(pp, mm, step):
   return diff
 
 
-
 def calc_3compo(atom, bond, atomnote, mollist, clulist):
    mol = 0.0
    inter = 0.0
    clu = 0.0
    for k in range(len(atomnote)):
-     if atomnote[k] in clulist:
+     if atomnote[k] in clulist and k in atom.keys():
        clu += atom[k]
-     elif atomnote[k] in mollist:
+     elif atomnote[k] in mollist and k in atom.keys():
        mol += atom[k]
 
    for k in range(len(atomnote)):
-     for l in range(k):
-       if atomnote[k] in clulist and atomnote[l] in clulist:
+     for l in range(len(atomnote)):
+       if atomnote[k] in clulist and atomnote[l] in clulist and (k, l) in bond.keys():
          clu += bond[(k, l)]
-       elif atomnote[k] in clulist and atomnote[l] in mollist:
+       elif atomnote[k] in clulist and atomnote[l] in mollist and (k, l) in bond.keys():
          inter += bond[(k, l)]
-       elif atomnote[l] in clulist and atomnote[k] in mollist:
+       elif atomnote[l] in clulist and atomnote[k] in mollist and (k, l) in bond.keys():
          inter += bond[(k, l)]
-       elif atomnote[k] in mollist and atomnote[l] in mollist:
+       elif atomnote[k] in mollist and atomnote[l] in mollist and (k, l) in bond.keys():
          mol += bond[(k, l)]
 
    return mol, inter, clu
-
 
 
 
@@ -89,13 +119,16 @@ def calc_cosmatrix(coord):
 
   return anglecos
 
-
-
-def pf(p1, p2, Za, Zb, distance, anglecos): 
+def pf(p1, p2, Za, Zb, distance, anglecos):
   Ra = rbs[Za]
   Rb = rbs[Zb]
   try:
-    return math.exp(p1*(distance/(Ra+Rb))**2 + p2 * (1-anglecos))
+    if distance < 1.1*(Ra + Rb):
+      return math.exp(p1*(distance/(Ra+Rb))**2) + math.exp(p2 * (1-anglecos))
+    else:
+      return math.exp(2*p1*(distance/(Ra+Rb))**2) + math.exp(p2 * (1-anglecos))
+# simplified pf
+#    return math.exp(p1*(distance/(Ra+Rb))**2 + p2 * (1-anglecos))
   except OverflowError:
     return float('inf')
 
@@ -166,15 +199,14 @@ def sum_bondpol(num, coord_bohr, Q_x, Q_y, Q_z):
 
 def collectaoresponse(filename):
   f = open(filename)
-  f1  =f.readlines()
+  f1 = f.readlines()
   f.close()
   ii = 0
   aoresponse_pointer = {}
   for i in range(len(f1)):
-    if 'No. of frequency' in f1[i]:
+    if 'No. of frequency:' in f1[i]:
       ii += 1
       aoresponse_pointer.update({ii : i})
-
   if ii == 1:
     return [f1]
   elif ii > 1:
@@ -182,9 +214,10 @@ def collectaoresponse(filename):
     for i in range(1, ii):
       returncontent.append(f1[:aoresponse_pointer[1]] + f1[aoresponse_pointer[i]:aoresponse_pointer[i+1]])
     returncontent.append(f1[:aoresponse_pointer[1]] + f1[aoresponse_pointer[ii]:])
-
     ## if the calculation is finished normally
-    if 'END' in f1[-1] and 'NORMAL TERMINATION' in f1[-2]:
+    if 'AMS application finished. Exiting' in f1[-5] and 'NORMAL TERMINATION' in f1[-4]: ## for ams2021, ams2020
+      return returncontent
+    elif 'NORMAL TERMINATION' in f1[-2]: ## for ams2019 and previous
       return returncontent
     ## if the calculation is terminated prematurely
     else:
@@ -192,6 +225,9 @@ def collectaoresponse(filename):
 
   else:
     print('wrong file collected: '+filename)
+
+
+
 
 
 def orient_ave(R):
@@ -226,12 +262,11 @@ def printcoord(xyzname, atomnote, coord):
   g.close()
 
 
-
-def calc_rotmatrix(A, B): 
+def calc_rotmatrix(A, B):
 ## calc the rotation matrix which aligns two vectors A and B parallel 
   A = A / np.linalg.norm(A)
   B = B / np.linalg.norm(B)
-  
+
   tmpcos = np.dot(A, B)
   tmpsin = np.linalg.norm(np.cross(A, B) )
   G = np.zeros((3, 3))
@@ -241,22 +276,29 @@ def calc_rotmatrix(A, B):
   G[1][1] = tmpcos
   G[2][2] = 1.0
   u = A.copy()
-  v = (B - tmpcos*A) / (np.linalg.norm(B-tmpcos*A ))
-  w = np.cross(B, A)  
+  if np.linalg.norm(B-tmpcos*A ) == 0.0:
+    v = np.array([0, 0, 0])
+  else:
+    v = (B - tmpcos*A) / (np.linalg.norm(B-tmpcos*A ))
+  w = np.cross(B, A)
   F_inv = np.zeros((3, 3))
   for i in range(3):
     F_inv[i][0] = u[i]
-  
+
   for i in range(3):
     F_inv[i][1] = v[i]
-  
+
   for i in range(3):
     F_inv[i][2] = w[i]
-  
-  F = np.linalg.inv(F_inv)
-  U = np.matmul(F_inv , np.matmul(G, F))
 
-  return U
+
+  if np.linalg.det(F_inv) != 0:
+    F = np.linalg.inv(F_inv)
+    U = np.matmul(F_inv , np.matmul(G, F))
+    return U
+  else:
+    print(A, B)
+    return np.identity(3)
 
 
 def align_plane(coord, p1, p2, p3, direction): 
@@ -302,23 +344,34 @@ def coordfromxyz(filename):
 
 ## for periodic systems ##
 
+#def calc_dis_periodic2d(coord1, coord2, vec1, vec2):
+#  L = []
+#  ii = []
+#  for i in range(-1, 2):
+#    for j in range(-1, 2):
+#      newcoord = coord2 + i * vec1 + j * vec2
+#      L.append( math.sqrt((newcoord[0] - coord1[0])**2 + (newcoord[1] - coord1[1])**2+ (newcoord[2] - coord1[2])**2) )
+#      ii.append((i, j))
+#
+#  minL = L[0]
+#  minii = ii[0]
+#  for i in range(len(L)):
+#    if 0 < L[i] < minL:
+#      minL = L[i]
+#      minii = ii[i]
+#
+#  return minL, minii
+
+
 def calc_dis_periodic2d(coord1, coord2, vec1, vec2):
-  L = []
-  ii = []
+  L = {}
   for i in range(-1, 2):
     for j in range(-1, 2):
       newcoord = coord2 + i * vec1 + j * vec2
-      L.append( math.sqrt((newcoord[0] - coord1[0])**2 + (newcoord[1] - coord1[1])**2+ (newcoord[2] - coord1[2])**2) )
-      ii.append((i, j))
+      L.update( { (i, j) : math.sqrt((newcoord[0] - coord1[0])**2 + (newcoord[1] - coord1[1])**2+ (newcoord[2] - coord1[2])**2) } )
 
-  minL = L[0]
-  minii = ii[0]
-  for i in range(len(L)):
-    if 0 < L[i] < minL:
-      minL = L[i]
-      minii = ii[i]
+  return L
 
-  return minL, minii
 
 
 def periodiccoordfromtxt(filename):
